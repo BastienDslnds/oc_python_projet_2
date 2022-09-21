@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import os
+import pandas as pd
 
 # Donnée d'entrée: url du site
 url_site = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
@@ -25,6 +26,7 @@ for categorie in liste_categories:
     categorie_titre_init = categorie.text.replace("\n", "")
     # Supprimer les espaces avant et après le titre (TRANSFORMATION)
     categorie_titre = categorie_titre_init.lstrip().rstrip()
+    print(categorie_titre)
     # Récupérer l'url de la catéogrie et supprimer les ../ (TRANSFORMATION)
     url_category_found = categorie['href'].replace("../", "")
     # Reformater l'url (TRANSFORMATION)
@@ -38,6 +40,12 @@ for categorie in liste_categories:
         nb_page = 1
     else:
         nb_page = nb_page.text.strip()[-1:]  # récupérer le nombre de page(s) (EXTRACTION)
+
+    # Création du dataframe de la catégorie avec les en-tête (CHARGEMENT)
+    df_categorie = pd.DataFrame(columns=['product_page_url', 'universal_ product_code (upc)', 'title',
+                                         'price_including_tax', 'price_excluding_tax', 'number_available', 'category',
+                                         'review_rating', 'image_url', 'product_description'])
+
     # Parcourir chaque page pour obtenir les informations des livres de chaque page (EXTRACTION)
     for page in range(int(nb_page)):
         if page == 0:  # pour la première page, l'url est différent donc le cas est géré avec ce if
@@ -64,9 +72,10 @@ for categorie in liste_categories:
             # Récupérer les informations du livre (EXTRACTION + TRANSFORMATION)
             product_page_url = url_livre
             universal_product_code = soup_livre.find("table", class_="table table-striped").findAll("td")[0].text
-            price_including_tax = soup_livre.find("table", class_="table table-striped").findAll("td")[3].text.lstrip("Â")
-            print(price_including_tax)
-            price_excluding_tax = soup_livre.find("table", class_="table table-striped").findAll("td")[2].text.lstrip("Â")
+            price_including_tax_init = soup_livre.find("table", class_="table table-striped").findAll("td")[3].text
+            price_including_tax = price_including_tax_init.lstrip("Â")
+            price_excluding_tax_init = soup_livre.find("table", class_="table table-striped").findAll("td")[2].text
+            price_excluding_tax = price_excluding_tax_init.lstrip("Â")
             number_available_initial = soup_livre.find("table", class_="table table-striped").findAll("td")[5].text
             number_available = re.sub(r'\D', '', str(number_available_initial))
             title = soup_livre.find("h1").text
@@ -84,8 +93,13 @@ for categorie in liste_categories:
                 file_image.write(r)
 
             # Stocker les informations du livre dans un fichier csv (CHARGEMENT)
-            with open(f'fichiers_csv/categorie_{categorie_titre}.csv', 'a', encoding="utf-8") as file:
-                file.write(
-                    'product_page_url>universal_ product_code (upc)>title>price_including_tax>price_excluding_tax>number_available>category>review_rating>image_url>product_description\n')
-                file.write(
-                    f"{product_page_url}>{universal_product_code}>{title}>{price_including_tax}>{price_excluding_tax}>{number_available}>{category}>{review_rating}>{image_URL}>{product_description}")
+            df_categorie_new_row = pd.DataFrame({'product_page_url': [product_page_url],
+                                                 'universal_ product_code (upc)': [universal_product_code],
+                                                 'title': [title],
+                                                 'price_including_tax': [price_including_tax],
+                                                 'price_excluding_tax': [price_excluding_tax],
+                                                 'number_available': [number_available], 'category':[category],
+                                                 'review_rating': [review_rating], 'image_url': [image_URL],
+                                                 'product_description': [product_description]})
+            df_categorie = pd.concat([df_categorie, df_categorie_new_row])
+            df_categorie.to_csv(f"fichiers_csv/categorie_{categorie_titre}.csv", sep='>', index=False, encoding="utf-8")
