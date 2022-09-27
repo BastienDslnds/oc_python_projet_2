@@ -20,14 +20,14 @@ Les informations des livres sont les suivantes :
 - image_url
 - product_description
 
-## Getting Started
+## Préparation
 
-### Dependencies
+### Dépendances
 
 * installer Windows, version 10.0.19043
 * installer python 3.10
 
-### Installing
+### Installation
 * Créer un dossier en local
 * Copier dans ce dossier :
   * le fichier main.py
@@ -37,7 +37,7 @@ Les informations des livres sont les suivantes :
   * 2- se positionner dans le dossier du projet contenant le fichier requirements.txt en utilisant  la commande "cd"
   * 3- utiliser la commande suivante: "pip install -r requirements.txt"
 
-### Executing program
+### Execution du programme
 
 * Se positionner dans le dossier contenant le fichier main.py (Ex: C:\Users\basti\Desktop\projet)
 * Utiliser la commande "python main.py"
@@ -45,6 +45,8 @@ Les informations des livres sont les suivantes :
   * un dossier "fichiers_csv" avec l'ensemble des données par catégorie
   * un dossier "images_livres" avec toutes les images de livres
 
-## Authors
+## Auteurs
+
 Bastien Deslandes
+
 bastien.deslandes@free.fr
