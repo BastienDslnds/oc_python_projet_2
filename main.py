@@ -104,16 +104,31 @@ def extract_books_data_category(books_category_url):
         product_description_modified = product_description.text.replace(";", ",")
         product_descriptions.append(product_description_modified)
 
-    return product_page_urls, \
-        universal_product_codes, \
-        titles, \
-        prices_including_tax, \
-        prices_excluding_tax, \
-        categories, \
-        reviews_ratings, \
-        numbers_availables, \
-        image_urls, \
-        product_descriptions
+    keys = ['product_page_url',
+            'universal_product_code',
+            'title',
+            'price_including_tax',
+            'price_excluding_tax',
+            'number_available',
+            'category',
+            'review_rating',
+            'image_url',
+            'product_description']
+
+    values = [product_page_urls,
+              universal_product_codes,
+              titles,
+              prices_including_tax,
+              prices_excluding_tax,
+              categories,
+              reviews_ratings,
+              numbers_availables,
+              image_urls,
+              product_descriptions]
+
+    books_data_category = {keys[i]: values[i] for i in range(len(keys))}
+
+    return books_data_category
 
 
 def transform_categories_url(categories_url_found):
@@ -156,23 +171,23 @@ def load_books_data_categories(categories_titles, books_data_categories):
     os.mkdir("fichiers_csv")
 
     for category_title, books_data_category in zip(categories_titles, books_data_categories):
-        df_category = pd.DataFrame({'product_page_url': books_data_category[0],
-                                    'universal_ product_code (upc)': books_data_category[1],
-                                    'title': books_data_category[2],
-                                    'price_including_tax': books_data_category[3],
-                                    'price_excluding_tax': books_data_category[4],
-                                    'number_available': books_data_category[5],
-                                    'category': books_data_category[6],
-                                    'review_rating': books_data_category[7],
-                                    'image_url': books_data_category[8],
-                                    'product_description': books_data_category[9]})
+        df_category = pd.DataFrame({'product_page_url': books_data_category['product_page_url'],
+                                    'universal_ product_code (upc)': books_data_category['universal_product_code'],
+                                    'title': books_data_category['title'],
+                                    'price_including_tax': books_data_category['price_including_tax'],
+                                    'price_excluding_tax': books_data_category['price_excluding_tax'],
+                                    'number_available': books_data_category['number_available'],
+                                    'category': books_data_category['category'],
+                                    'review_rating': books_data_category['review_rating'],
+                                    'image_url': books_data_category['image_url'],
+                                    'product_description': books_data_category['product_description']})
         df_category.to_csv(f"fichiers_csv/categorie_{category_title}.csv", sep='>', index=False, encoding="utf-8-sig")
 
 
 def load_books_image(books_data_category):
     """Load books image. """
 
-    for image_url, title in zip(books_data_category[8], books_data_category[2]):
+    for image_url, title in zip(books_data_category['image_url'], books_data_category['title']):
         r_image = requests.get(image_url).content
         title_formated = ''.join(char for char in title if char.isalnum())
         with open(f"images_livres/{title_formated}.jpg", "wb+") as file_image:
