@@ -100,8 +100,9 @@ def extract_books_data_category(books_category_url):
         image_url_found = book_soup.findAll('img')[0]['src'].replace("../..", "http://books.toscrape.com")
         image_urls.append(image_url_found)
 
-        product_description = book_soup.findAll('p')[3].text
-        product_descriptions.append(product_description)
+        product_description = book_soup.findAll('p')[3]
+        product_description_modified = product_description.text.replace(";", ",")
+        product_descriptions.append(product_description_modified)
 
     return product_page_urls, \
         universal_product_codes, \
@@ -234,7 +235,7 @@ def etl():
         pages_url_of_category = get_pages_url_of_category(category_url, nb_pages)
         books_url_category = extract_books_url_category(pages_url_of_category)
         books_data_category = extract_books_data_category(books_url_category)
-        '''load_books_image(books_data_category)'''
+        load_books_image(books_data_category)
 
         # store books information of the category
         books_data_categories.append(books_data_category)
