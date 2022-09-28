@@ -1,4 +1,4 @@
-# Titre du projet
+# Extraction des données du site Books to Scrape
 
 Programme permettant l'extraction d'informations du site Books to Scrape
 
@@ -28,18 +28,15 @@ Les informations des livres sont les suivantes :
 * installer python 3.10
 
 ### Installation
-* Créer un dossier en local
-* Copier dans ce dossier :
-  * le fichier main.py
-  * le fichier requirements.txt
+* git clone https://github.com/BastienDslnds/oc_python_projet_2.git
 * Créer et activer l'environnement virtuel 
   * 1- ouvrir l'application "invite de commande"
-  * 2- se positionner dans le dossier du projet contenant le fichier requirements.txt en utilisant  la commande "cd"
+  * 2- se positionner dans le dossier "oc_python_projet_2" contenant le fichier requirements.txt
   * 3- utiliser la commande suivante: "pip install -r requirements.txt"
 
 ### Execution du programme
 
-* Se positionner dans le dossier contenant le fichier main.py (Ex: C:\Users\basti\Desktop\projet)
+* Se positionner dans le dossier "oc_python_projet_2"
 * Utiliser la commande "python main.py"
 * Laisser tourner le script pour obtenir:
   * un dossier "fichiers_csv" avec l'ensemble des données par catégorie
