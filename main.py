@@ -5,121 +5,241 @@ import re
 import os
 import pandas as pd
 
-# Donnée d'entrée: url du site
-site_url = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
 
-# Récupérer le code html du site (EXTRACTION)
-site_response = requests.get(site_url)
-site_soup = BeautifulSoup(site_response.content.decode('utf-8'), 'html.parser')
-
-# Trouver les url des catégories de livre (EXTRACTION)
-categories_list = site_soup.findAll('ul')[2].findAll('a', href=True)  # liste des balises <a href="url">xxx<a/>
-
-# Créer le dossier pour stocker les fichiers csv (CHARGEMENT)
-CUR_DIR = os.path.dirname(__file__)  # récupérer le chemin du dossier dans lequel se trouve mon fichier python
+CUR_DIR = os.path.dirname(__file__)  # get project file path
 CSV_DIR = os.path.join(CUR_DIR, "fichiers_csv")
+IMG_DIR = os.path.join(CUR_DIR, "images_livres")
 
-if os.path.exists(CSV_DIR):
-    shutil.rmtree(CSV_DIR)
-os.mkdir("fichiers_csv")
 
-# Créer le dossier pour stocker les images (CHARGEMENT)
-IMAGES_DIR = os.path.join(CUR_DIR, "images_livres")
+def extract_categories_url(categories_list):
+    """Extract url of each category."""
 
-if os.path.exists(IMAGES_DIR):
-    shutil.rmtree(IMAGES_DIR)
-os.mkdir("images_livres")
+    urls_found = []
+    for category in categories_list:
+        urls_found.append(category['href'])
+    return urls_found
 
-# Boucler sur chaque catégorie pour obtenir les informations de ces livres
-for category in categories_list:
-    # Supprimer le saut de ligne (TRANSFORMATION)
-    category_title_init = category.text.replace("\n", "")
-    # Supprimer les espaces avant et après le titre (TRANSFORMATION)
-    category_title = category_title_init.lstrip().rstrip()
-    print(category_title)
-    # Récupérer l'url de la catéogrie et supprimer les ../ (TRANSFORMATION)
-    category_url_found = category['href'].replace("../", "")
-    # Reformater l'url (TRANSFORMATION)
-    category_url = f"http://books.toscrape.com/catalogue/category/{category_url_found}"
-    # Récupérer le code HTML de la catégorie (EXTRACTION)
-    category_response = requests.get(category_url)
-    category_soup = BeautifulSoup(category_response.content.decode('utf-8'), 'html.parser')
-    # Récupérer le nombre de pages de la catégorie (EXTRACTION)
-    nb_page = category_soup.find('li', class_="current")
-    if nb_page is None:  # si le champ est vide alors il n'y a qu'une seule page pour la catégorie (EXTRACTION)
-        nb_page = 1
-    else:
-        nb_page = nb_page.text.strip()[-1:]  # récupérer le nombre de page(s) (EXTRACTION)
 
-    # Création du dataframe de la catégorie avec les en-tête (CHARGEMENT)
-    columns = ['product_page_url',
-               'universal_ product_code (upc)',
-               'title',
-               'price_including_tax',
-               'price_excluding_tax',
-               'number_available',
-               'category',
-               'review_rating',
-               'image_url',
-               'product_description']
+def extract_books_url(books_page):
+    """Extract url of each book of a books page."""
 
-    df_category = pd.DataFrame(columns=columns)
+    books_urls_found = []
+    for book in books_page:
+        books_urls_found.append(book.find('a')['href'])
+    return books_urls_found
 
-    # Parcourir chaque page pour obtenir les informations des livres de chaque page (EXTRACTION)
-    for page in range(int(nb_page)):
-        if page == 0:  # pour la première page, l'url est différent donc le cas est géré avec ce if
-            category_page_url = category_url
-        else:
-            category_page_url_modified = category_page_url.replace("index.html", "")
-            category_page_url = f'{category_page_url_modified}page-{page + 1}.html'
-        # Récupérer le code HTML de la page de la catégorie (EXTRACTION)
-        page_response = requests.get(category_page_url)
+
+def extract_books_url_category(pages_urls):
+    """Get url of each book of a category by reading through each category's page."""
+
+    books_urls_category = []
+    for page_url in pages_urls:
+        print(page_url)
+        page_response = requests.get(page_url)
         page_soup = BeautifulSoup(page_response.content.decode('utf-8'), 'html.parser')
-        # Récupérer le nombre de livres de la page (EXTRACTION)
-        nb_books_by_page = len(page_soup.findAll('h3'))
-        for i in range(int(nb_books_by_page)):  # boucler sur chaque livre de la page
-            # Récupérer l'URL du livre (EXTRACTION)
-            book_url_found = page_soup.findAll('h3')[i].find('a')['href'].replace("../", "")
+        books_list = page_soup.findAll('h3')
 
-            # Formater l'URL du livre (TRANSFORMATION)
-            book_url = f"http://books.toscrape.com/catalogue/{book_url_found}"
+        books_urls_found = extract_books_url(books_list)
+        books_urls = transform_books_url(books_urls_found)
+        for book_url in books_urls:
+            books_urls_category.append(book_url)
 
-            # Récupérer le code HTML du livre (EXTRACTION)
-            book_response = requests.get(book_url)
-            book_soup = BeautifulSoup(book_response.content.decode('utf-8'), 'html.parser')
-            print(book_soup)
+    return books_urls_category
 
-            # Récupérer les informations du livre (EXTRACTION + TRANSFORMATION)
-            product_page_url = book_url
-            universal_product_code = book_soup.find("table", class_="table table-striped").findAll("td")[0].text
-            price_including_tax_init = book_soup.find("table", class_="table table-striped").findAll("td")[3].text
-            price_including_tax = price_including_tax_init.lstrip("Â£")
-            price_excluding_tax_init = book_soup.find("table", class_="table table-striped").findAll("td")[2].text
-            price_excluding_tax = price_excluding_tax_init.lstrip("Â£")
-            number_available_initial = book_soup.find("table", class_="table table-striped").findAll("td")[5].text
-            number_available = re.sub(r'\D', '', str(number_available_initial))
-            title = book_soup.find("h1").text
-            product_description = book_soup.findAll('p')[3].text
-            category = book_soup.find('ul', class_="breadcrumb").findAll('a')[2].text
-            review_rating = book_soup.findAll("p", class_="star-rating")[0]['class'][1]
-            image_URL = book_soup.findAll('img')[0]['src'].replace("../..", "http://books.toscrape.com")
 
-            # Récupérer l'image du livre (EXTRACTION)
-            r_image = requests.get(image_URL).content
-            # Formater le nommage du fichier de l'image (TRANSFORMATION)
-            title_formated = ''.join(char for char in title if char.isalnum())
-            # Stocker l'image (CHARGEMENT)
-            with open(f"images_livres/{title_formated}.jpg", "wb+") as file_image:
-                file_image.write(r_image)
+def extract_categories_title(categories_list):
+    """Extract each category title."""
 
-            # Stocker les informations du livre dans un fichier csv (CHARGEMENT)
-            df_category_new_row = pd.DataFrame({'product_page_url': [product_page_url],
-                                                'universal_ product_code (upc)': [universal_product_code],
-                                                'title': [title],
-                                                'price_including_tax': [price_including_tax],
-                                                'price_excluding_tax': [price_excluding_tax],
-                                                'number_available': [number_available], 'category': [category],
-                                                'review_rating': [review_rating], 'image_url': [image_URL],
-                                                'product_description': [product_description]})
-            df_category = pd.concat([df_category, df_category_new_row])
-            df_category.to_csv(f"fichiers_csv/categorie_{category_title}.csv", sep='>', index=False, encoding="utf-8")
+    titles_categories_found = []
+    for element in categories_list:
+        titles_categories_found.append(element.text)
+    return titles_categories_found
+
+
+def extract_books_data_category(books_category_url):
+    """Extract books information from a category by reading through a list of books url."""
+
+    product_page_urls = []
+    universal_product_codes = []
+    titles = []
+    prices_including_tax = []
+    prices_excluding_tax = []
+    categories = []
+    reviews_ratings = []
+    numbers_availables = []
+    image_urls = []
+    product_descriptions = []
+    for book_url in books_category_url:
+        book_response = requests.get(book_url)
+        # parse the HTML in BeautifulSoup objects
+        book_soup = BeautifulSoup(book_response.content.decode('utf-8'), 'html.parser')
+
+        product_page_urls.append(book_url)
+
+        universal_product_code_found = book_soup.find("table", class_="table table-striped").findAll("td")[0].text
+        universal_product_codes.append(universal_product_code_found)
+
+        title = book_soup.find("h1").text
+        titles.append(title)
+
+        price_including_tax_found = book_soup.find("table", class_="table table-striped").findAll("td")[3].text
+        prices_including_tax.append(price_including_tax_found.lstrip("Â£"))
+
+        price_excluding_tax_found = book_soup.find("table", class_="table table-striped").findAll("td")[3].text
+        prices_excluding_tax.append(price_excluding_tax_found.lstrip("Â£"))
+
+        category = book_soup.find('ul', class_="breadcrumb").findAll('a')[2].text
+        categories.append(category)
+
+        review_rating = book_soup.findAll("p", class_="star-rating")[0]['class'][1]
+        reviews_ratings.append(review_rating)
+
+        number_available_found = book_soup.find("table", class_="table table-striped").findAll("td")[5].text
+        numbers_availables.append(re.sub(r'\D', '', str(number_available_found)))
+
+        image_url_found = book_soup.findAll('img')[0]['src'].replace("../..", "http://books.toscrape.com")
+        image_urls.append(image_url_found)
+
+        product_description = book_soup.findAll('p')[3].text
+        product_descriptions.append(product_description)
+
+    return product_page_urls, \
+        universal_product_codes, \
+        titles, \
+        prices_including_tax, \
+        prices_excluding_tax, \
+        categories, \
+        reviews_ratings, \
+        numbers_availables, \
+        image_urls, \
+        product_descriptions
+
+
+def transform_categories_url(categories_url_found):
+    """Transform categories url."""
+
+    urls = []
+    for url in categories_url_found:
+        url_found_modified = url.replace("../", "")
+        url_new = f"http://books.toscrape.com/catalogue/category/{url_found_modified}"
+        urls.append(url_new)
+    return urls
+
+
+def transform_books_url(books_url_found):
+    """Transform books url."""
+
+    books_urls = []
+    for url in books_url_found:
+        url_found_modified = url.replace("../", "")
+        url_new = f"http://books.toscrape.com/catalogue/{url_found_modified}"
+        books_urls.append(url_new)
+    return books_urls
+
+
+def transform_categories_title(categories_title):
+    """Transform categories title."""
+
+    titles = []
+    for title in categories_title:
+        title_modified = title.replace("\n", "").lstrip().rstrip()
+        titles.append(title_modified)
+    return titles
+
+
+def load_books_data_categories(categories_titles, books_data_categories):
+    """Load books information from each category. """
+
+    if os.path.exists(CSV_DIR):
+        shutil.rmtree(CSV_DIR)
+    os.mkdir("fichiers_csv")
+
+    for category_title, books_data_category in zip(categories_titles, books_data_categories):
+        df_category = pd.DataFrame({'product_page_url': books_data_category[0],
+                                    'universal_ product_code (upc)': books_data_category[1],
+                                    'title': books_data_category[2],
+                                    'price_including_tax': books_data_category[3],
+                                    'price_excluding_tax': books_data_category[4],
+                                    'number_available': books_data_category[5],
+                                    'category': books_data_category[6],
+                                    'review_rating': books_data_category[7],
+                                    'image_url': books_data_category[8],
+                                    'product_description': books_data_category[9]})
+        df_category.to_csv(f"fichiers_csv/categorie_{category_title}.csv", sep='>', index=False, encoding="utf-8-sig")
+
+
+def load_books_image(books_data_category):
+    """Load books image. """
+
+    for image_url, title in zip(books_data_category[8], books_data_category[2]):
+        r_image = requests.get(image_url).content
+        title_formated = ''.join(char for char in title if char.isalnum())
+        with open(f"images_livres/{title_formated}.jpg", "wb+") as file_image:
+            file_image.write(r_image)
+
+
+def get_pages_url_of_category(category_url, nb_pages):
+    """Get url of each page in the category."""
+    pages_urls = []
+    for page in range(int(nb_pages)):
+        if page == 0:  # pour la première page, l'url est différent donc le cas est géré avec ce if
+            pages_urls.append(category_url)
+        else:
+            page_url_modified = category_url.replace("index.html", "")
+            page_url = f'{page_url_modified}page-{page + 1}.html'
+            pages_urls.append(page_url)
+    return pages_urls
+
+
+def etl():
+    # if a file for images already exists, remove it
+    if os.path.exists(IMG_DIR):
+        shutil.rmtree(IMG_DIR)
+    os.mkdir("images_livres")
+
+    # link page to scrap
+    site_url = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
+    site_response = requests.get(site_url)
+
+    # parse the HTML in BeautifulSoup object
+    site_soup = BeautifulSoup(site_response.content.decode('utf-8'), 'html.parser')
+    categories_list = site_soup.findAll('ul')[2].findAll('a', href=True)
+
+    # extract categories url
+    categories_url = extract_categories_url(categories_list)
+
+    # transform categories urls
+    categories_url = transform_categories_url(categories_url)
+
+    # extract categories title
+    categories_title = extract_categories_title(categories_list)
+
+    # transform categories title
+    categories_title = transform_categories_title(categories_title)
+
+    # create a folder storing books information of each category
+    books_data_categories = []
+
+    for category_url in categories_url:
+        category_response = requests.get(category_url)
+        category_soup = BeautifulSoup(category_response.content.decode('utf-8'), 'html.parser')
+
+        # get page(s) number of the category
+        nb_pages = category_soup.find('li', class_="current")
+        if nb_pages is None:  # if field is empty, there is only one page for the category
+            nb_pages = 1
+        else:
+            nb_pages = nb_pages.text.strip()[-1:]
+
+        pages_url_of_category = get_pages_url_of_category(category_url, nb_pages)
+        books_url_category = extract_books_url_category(pages_url_of_category)
+        books_data_category = extract_books_data_category(books_url_category)
+        '''load_books_image(books_data_category)'''
+
+        # store books information of the category
+        books_data_categories.append(books_data_category)
+
+    load_books_data_categories(categories_title, books_data_categories)
+
+
+etl()
