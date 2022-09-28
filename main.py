@@ -184,14 +184,20 @@ def load_books_data_categories(categories_titles, books_data_categories):
         df_category.to_csv(f"fichiers_csv/categorie_{category_title}.csv", sep='>', index=False, encoding="utf-8-sig")
 
 
-def load_books_image(books_data_category):
+def load_books_image(books_data_categories):
     """Load books image. """
 
-    for image_url, title in zip(books_data_category['image_url'], books_data_category['title']):
-        r_image = requests.get(image_url).content
-        title_formated = ''.join(char for char in title if char.isalnum())
-        with open(f"images_livres/{title_formated}.jpg", "wb+") as file_image:
-            file_image.write(r_image)
+    # if a file for images already exists, remove it
+    if os.path.exists(IMG_DIR):
+        shutil.rmtree(IMG_DIR)
+    os.mkdir("images_livres")
+
+    for books_data_category in books_data_categories:
+        for image_url, title in zip(books_data_category['image_url'], books_data_category['title']):
+            r_image = requests.get(image_url).content
+            title_formated = ''.join(char for char in title if char.isalnum())
+            with open(f"images_livres/{title_formated}.jpg", "wb+") as file_image:
+                file_image.write(r_image)
 
 
 def get_pages_url_of_category(category_url, nb_pages):
@@ -208,11 +214,6 @@ def get_pages_url_of_category(category_url, nb_pages):
 
 
 def etl():
-    # if a file for images already exists, remove it
-    if os.path.exists(IMG_DIR):
-        shutil.rmtree(IMG_DIR)
-    os.mkdir("images_livres")
-
     # link page to scrap
     site_url = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
     site_response = requests.get(site_url)
@@ -250,12 +251,12 @@ def etl():
         pages_url_of_category = get_pages_url_of_category(category_url, nb_pages)
         books_url_category = extract_books_url_category(pages_url_of_category)
         books_data_category = extract_books_data_category(books_url_category)
-        load_books_image(books_data_category)
 
         # store books information of the category
         books_data_categories.append(books_data_category)
 
     load_books_data_categories(categories_title, books_data_categories)
+    load_books_image(books_data_categories)
 
 
 etl()
