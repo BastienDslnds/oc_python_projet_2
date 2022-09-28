@@ -101,7 +101,7 @@ def extract_books_data_category(books_category_url):
         image_urls.append(image_url_found)
 
         product_description = book_soup.findAll('p')[3]
-        product_description_modified = product_description.text.replace(";", ",")
+        product_description_modified = product_description.text.replace(";", ",").replace("\n", "")
         product_descriptions.append(product_description_modified)
 
     keys = ['product_page_url',
