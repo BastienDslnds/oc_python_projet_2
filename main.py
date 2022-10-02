@@ -11,52 +11,61 @@ CSV_DIR = os.path.join(CUR_DIR, "fichiers_csv")
 IMG_DIR = os.path.join(CUR_DIR, "images_livres")
 
 
-def extract_categories_url(categories_list):
-    """Extract url of each category."""
+def extract_categories_data(site_url):
+    """Extract title and url of each category."""
+
+    site_response = requests.get(site_url)
+    # parse the HTML in BeautifulSoup object
+    site_soup = BeautifulSoup(site_response.content.decode('utf-8'), 'html.parser')
+    categories_list = site_soup.findAll('ul')[2].findAll('a', href=True)
 
     urls_found = []
+    titles_categories_found = []
     for category in categories_list:
         urls_found.append(category['href'])
-    return urls_found
+        titles_categories_found.append(category.text)
+    return {'urls':  urls_found, 'titles': titles_categories_found}
 
 
-def extract_books_url(books_page):
-    """Extract url of each book of a books page."""
-
-    books_urls_found = []
-    for book in books_page:
-        books_urls_found.append(book.find('a')['href'])
-    return books_urls_found
-
-
-def extract_books_url_category(pages_urls):
+def extract_books_url_category(category_url):
     """Get url of each book of a category by reading through each category's page."""
 
-    books_urls_category = []
-    for page_url in pages_urls:
-        print(page_url)
+    pages_url_category = [category_url]
+    page_response = requests.get(category_url)
+    page_soup = BeautifulSoup(page_response.content.decode('utf-8'), 'html.parser')
+
+    # input datas in case of multiples pages
+    page_url_modified = category_url.replace("index.html", "")
+    page_number = 2
+
+    while True:
+        next_page = page_soup.find('li', class_="next")
+        if next_page is None:
+            break
+        else:
+            page_url = f'{page_url_modified}page-{page_number}.html'
+            pages_url_category.append(page_url)
+
+            page_response = requests.get(page_url)
+            page_soup = BeautifulSoup(page_response.content.decode('utf-8'), 'html.parser')
+            page_number += 1
+
+    books_url_category = []
+    for page_url in pages_url_category:
         page_response = requests.get(page_url)
         page_soup = BeautifulSoup(page_response.content.decode('utf-8'), 'html.parser')
-        books_list = page_soup.findAll('h3')
+        books_page = page_soup.findAll('h3')
 
-        books_urls_found = extract_books_url(books_list)
-        books_urls = transform_books_url(books_urls_found)
-        for book_url in books_urls:
-            books_urls_category.append(book_url)
+        books_url_found = extract_books_url(books_page)
+        books_url = transform_books_url(books_url_found)
 
-    return books_urls_category
+        for book_url in books_url:
+            books_url_category.append(book_url)
 
-
-def extract_categories_title(categories_list):
-    """Extract each category title."""
-
-    titles_categories_found = []
-    for element in categories_list:
-        titles_categories_found.append(element.text)
-    return titles_categories_found
+    return books_url_category
 
 
-def extract_books_data_category(books_category_url):
+def extract_books_data_category(books_url_category):
     """Extract books information from a category by reading through a list of books url."""
 
     product_page_urls = []
@@ -67,9 +76,9 @@ def extract_books_data_category(books_category_url):
     categories = []
     reviews_ratings = []
     numbers_availables = []
-    image_urls = []
-    product_descriptions = []
-    for book_url in books_category_url:
+    images_urls = []
+    products_descriptions = []
+    for book_url in books_url_category:
         book_response = requests.get(book_url)
         # parse the HTML in BeautifulSoup objects
         book_soup = BeautifulSoup(book_response.content.decode('utf-8'), 'html.parser')
@@ -98,22 +107,22 @@ def extract_books_data_category(books_category_url):
         numbers_availables.append(re.sub(r'\D', '', str(number_available_found)))
 
         image_url_found = book_soup.findAll('img')[0]['src'].replace("../..", "http://books.toscrape.com")
-        image_urls.append(image_url_found)
+        images_urls.append(image_url_found)
 
         product_description = book_soup.findAll('p')[3]
         product_description_modified = product_description.text.replace(";", ",").replace("\n", "")
-        product_descriptions.append(product_description_modified)
+        products_descriptions.append(product_description_modified)
 
-    keys = ['product_page_url',
-            'universal_product_code',
-            'title',
-            'price_including_tax',
-            'price_excluding_tax',
-            'number_available',
-            'category',
-            'review_rating',
-            'image_url',
-            'product_description']
+    keys = ['product_page_urls',
+            'universal_product_codes',
+            'titles',
+            'prices_including_tax',
+            'prices_excluding_tax',
+            'numbers_availables',
+            'categories',
+            'reviews_ratings',
+            'images_urls',
+            'products_descriptions']
 
     values = [product_page_urls,
               universal_product_codes,
@@ -123,23 +132,35 @@ def extract_books_data_category(books_category_url):
               categories,
               reviews_ratings,
               numbers_availables,
-              image_urls,
-              product_descriptions]
+              images_urls,
+              products_descriptions]
 
     books_data_category = {keys[i]: values[i] for i in range(len(keys))}
 
     return books_data_category
 
 
-def transform_categories_url(categories_url_found):
-    """Transform categories url."""
+def extract_books_url(books_page):
+    """Extract url of each book of a books page."""
+
+    books_urls_found = []
+    for book in books_page:
+        books_urls_found.append(book.find('a')['href'])
+    return books_urls_found
+
+
+def transform_categories_data(categories_data):
+    """Transform categories url and title."""
 
     urls = []
-    for url in categories_url_found:
+    titles = []
+    for url, title in zip(categories_data['urls'], categories_data['titles']):
         url_found_modified = url.replace("../", "")
         url_new = f"http://books.toscrape.com/catalogue/category/{url_found_modified}"
         urls.append(url_new)
-    return urls
+        title_modified = title.replace("\n", "").lstrip().rstrip()
+        titles.append(title_modified)
+    return {'urls': urls, 'titles': titles}
 
 
 def transform_books_url(books_url_found):
@@ -153,34 +174,24 @@ def transform_books_url(books_url_found):
     return books_urls
 
 
-def transform_categories_title(categories_title):
-    """Transform categories title."""
-
-    titles = []
-    for title in categories_title:
-        title_modified = title.replace("\n", "").lstrip().rstrip()
-        titles.append(title_modified)
-    return titles
-
-
-def load_books_data_categories(categories_titles, books_data_categories):
+def load_books_data_categories(categories_data, books_data_categories):
     """Load books information from each category. """
 
     if os.path.exists(CSV_DIR):
         shutil.rmtree(CSV_DIR)
     os.mkdir("fichiers_csv")
 
-    for category_title, books_data_category in zip(categories_titles, books_data_categories):
-        df_category = pd.DataFrame({'product_page_url': books_data_category['product_page_url'],
-                                    'universal_ product_code (upc)': books_data_category['universal_product_code'],
-                                    'title': books_data_category['title'],
-                                    'price_including_tax': books_data_category['price_including_tax'],
-                                    'price_excluding_tax': books_data_category['price_excluding_tax'],
-                                    'number_available': books_data_category['number_available'],
-                                    'category': books_data_category['category'],
-                                    'review_rating': books_data_category['review_rating'],
-                                    'image_url': books_data_category['image_url'],
-                                    'product_description': books_data_category['product_description']})
+    for category_title, books_data_category in zip(categories_data['titles'], books_data_categories):
+        df_category = pd.DataFrame({'product_page_url': books_data_category['product_page_urls'],
+                                    'universal_ product_code (upc)': books_data_category['universal_product_codes'],
+                                    'title': books_data_category['titles'],
+                                    'price_including_tax': books_data_category['prices_including_tax'],
+                                    'price_excluding_tax': books_data_category['prices_excluding_tax'],
+                                    'number_available': books_data_category['numbers_availables'],
+                                    'category': books_data_category['categories'],
+                                    'review_rating': books_data_category['reviews_ratings'],
+                                    'image_url': books_data_category['images_urls'],
+                                    'product_description': books_data_category['products_descriptions']})
         df_category.to_csv(f"fichiers_csv/categorie_{category_title}.csv", sep='>', index=False, encoding="utf-8-sig")
 
 
@@ -193,69 +204,32 @@ def load_books_image(books_data_categories):
     os.mkdir("images_livres")
 
     for books_data_category in books_data_categories:
-        for image_url, title in zip(books_data_category['image_url'], books_data_category['title']):
+        for image_url, title in zip(books_data_category['images_urls'], books_data_category['titles']):
             r_image = requests.get(image_url).content
             title_formated = ''.join(char for char in title if char.isalnum())
             with open(f"images_livres/{title_formated}.jpg", "wb+") as file_image:
                 file_image.write(r_image)
 
 
-def get_pages_url_of_category(category_url, nb_pages):
-    """Get url of each page in the category."""
-    pages_urls = []
-    for page in range(int(nb_pages)):
-        if page == 0:  # pour la première page, l'url est différent donc le cas est géré avec ce if
-            pages_urls.append(category_url)
-        else:
-            page_url_modified = category_url.replace("index.html", "")
-            page_url = f'{page_url_modified}page-{page + 1}.html'
-            pages_urls.append(page_url)
-    return pages_urls
-
-
 def etl():
-    # link page to scrap
     site_url = 'http://books.toscrape.com/catalogue/category/books_1/index.html'
-    site_response = requests.get(site_url)
-
-    # parse the HTML in BeautifulSoup object
-    site_soup = BeautifulSoup(site_response.content.decode('utf-8'), 'html.parser')
-    categories_list = site_soup.findAll('ul')[2].findAll('a', href=True)
-
-    # extract categories url
-    categories_url = extract_categories_url(categories_list)
+    # extract categories data
+    categories_data = extract_categories_data(site_url)
 
     # transform categories urls
-    categories_url = transform_categories_url(categories_url)
-
-    # extract categories title
-    categories_title = extract_categories_title(categories_list)
-
-    # transform categories title
-    categories_title = transform_categories_title(categories_title)
+    categories_data = transform_categories_data(categories_data)
 
     # create a folder storing books information of each category
     books_data_categories = []
 
-    for category_url in categories_url:
-        category_response = requests.get(category_url)
-        category_soup = BeautifulSoup(category_response.content.decode('utf-8'), 'html.parser')
-
-        # get page(s) number of the category
-        nb_pages = category_soup.find('li', class_="current")
-        if nb_pages is None:  # if field is empty, there is only one page for the category
-            nb_pages = 1
-        else:
-            nb_pages = nb_pages.text.strip()[-1:]
-
-        pages_url_of_category = get_pages_url_of_category(category_url, nb_pages)
-        books_url_category = extract_books_url_category(pages_url_of_category)
+    for category_url in categories_data['urls']:
+        books_url_category = extract_books_url_category(category_url)
         books_data_category = extract_books_data_category(books_url_category)
 
         # store books information of the category
         books_data_categories.append(books_data_category)
 
-    load_books_data_categories(categories_title, books_data_categories)
+    load_books_data_categories(categories_data, books_data_categories)
     load_books_image(books_data_categories)
 
 
