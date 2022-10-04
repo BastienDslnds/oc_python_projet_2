@@ -25,7 +25,7 @@ Les informations des livres sont les suivantes :
 ### Dépendances
 
 * installer Windows, version 10.0.19043
-* installer python 3.10
+* installer Python 3.10
 
 ### Installation
 * git clone https://github.com/BastienDslnds/oc_python_projet_2.git
