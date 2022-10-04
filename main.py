@@ -192,7 +192,7 @@ def load_books_data_categories(categories_data, books_data_categories):
                                     'review_rating': books_data_category['reviews_ratings'],
                                     'image_url': books_data_category['images_urls'],
                                     'product_description': books_data_category['products_descriptions']})
-        df_category.to_csv(f"fichiers_csv/categorie_{category_title}.csv", sep='>', index=False, encoding="utf-8-sig")
+        df_category.to_csv(f"fichiers_csv/categorie_{category_title}.csv", sep=';', index=False, encoding="utf-8-sig")
 
 
 def load_books_image(books_data_categories):
