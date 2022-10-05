@@ -130,9 +130,9 @@ def extract_books_data_category(books_url_category):
               titles,
               prices_including_tax,
               prices_excluding_tax,
+              numbers_availables,
               categories,
               reviews_ratings,
-              numbers_availables,
               images_urls,
               products_descriptions]
 
