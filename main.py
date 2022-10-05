@@ -52,6 +52,7 @@ def extract_books_url_category(category_url):
 
     books_url_category = []
     for page_url in pages_url_category:
+        print(page_url)
         page_response = requests.get(page_url)
         page_soup = BeautifulSoup(page_response.content.decode('utf-8'), 'html.parser')
         books_page = page_soup.findAll('h3')
@@ -94,7 +95,7 @@ def extract_books_data_category(books_url_category):
         price_including_tax_found = book_soup.find("table", class_="table table-striped").findAll("td")[3].text
         prices_including_tax.append(price_including_tax_found.lstrip("Â£"))
 
-        price_excluding_tax_found = book_soup.find("table", class_="table table-striped").findAll("td")[3].text
+        price_excluding_tax_found = book_soup.find("table", class_="table table-striped").findAll("td")[2].text
         prices_excluding_tax.append(price_excluding_tax_found.lstrip("Â£"))
 
         category = book_soup.find('ul', class_="breadcrumb").findAll('a')[2].text
@@ -182,6 +183,7 @@ def load_books_data_categories(categories_data, books_data_categories):
     os.mkdir("fichiers_csv")
 
     for category_title, books_data_category in zip(categories_data['titles'], books_data_categories):
+        print(category_title)
         df_category = pd.DataFrame({'product_page_url': books_data_category['product_page_urls'],
                                     'universal_ product_code (upc)': books_data_category['universal_product_codes'],
                                     'title': books_data_category['titles'],
@@ -207,6 +209,7 @@ def load_books_image(books_data_categories):
         for image_url, title in zip(books_data_category['images_urls'], books_data_category['titles']):
             r_image = requests.get(image_url).content
             title_formated = ''.join(char for char in title if char.isalnum())
+            print(title_formated)
             with open(f"images_livres/{title_formated}.jpg", "wb+") as file_image:
                 file_image.write(r_image)
 
