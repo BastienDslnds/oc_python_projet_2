@@ -32,7 +32,11 @@ Les informations des livres sont les suivantes :
 * Créer et activer l'environnement virtuel 
   * 1- ouvrir l'application "invite de commande"
   * 2- se positionner dans le dossier "oc_python_projet_2" contenant le fichier requirements.txt
-  * 3- utiliser la commande suivante: "pip install -r requirements.txt"
+  * 3- créer l'environnement virtuel avec: "python -m venv env"
+  * 4- Activer l'environnement virtuel:
+    * se positionner dans le dosser Scripts: "cd env/Scripts"
+    * activer l'environnement: "source activate"
+  * 5- utiliser la commande suivante pour installer les packages: "pip install -r requirements.txt"
 
 ### Execution du programme
 
